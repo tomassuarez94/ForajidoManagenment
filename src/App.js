@@ -47,6 +47,9 @@ const BarManagementSystem = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   // 🔹 Leer transacciones al iniciar
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -175,15 +178,28 @@ const BarManagementSystem = () => {
     }
   };
 
-  // 🔹 Filtros y estadísticas
+  // 🔹 Filtros y estadísticas con rango personalizado
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
+    // Filtrar por tipo (ingreso/egreso)
     if (filter !== "all") {
       filtered = filtered.filter((t) => t.type === filter);
     }
 
-    if (dateFilter !== "all") {
+    // Si el usuario selecciona rango de fechas personalizado
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      // Aseguramos incluir el día final completo
+      end.setHours(23, 59, 59, 999);
+
+      filtered = filtered.filter((t) => {
+        const transactionDate = new Date(t.date);
+        return transactionDate >= start && transactionDate <= end;
+      });
+    } else if (dateFilter !== "all") {
+      // Filtros rápidos (hoy / semana / mes)
       const today = new Date();
       const filterDate = new Date();
 
@@ -200,7 +216,8 @@ const BarManagementSystem = () => {
     }
 
     return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [transactions, filter, dateFilter]);
+  }, [transactions, filter, dateFilter, startDate, endDate]);
+
 
   const stats = useMemo(() => {
     const ingresos = filteredTransactions
@@ -313,8 +330,8 @@ const BarManagementSystem = () => {
               <button
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'all'
-                    ? 'bg-white text-purple-900'
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'bg-white text-purple-900'
+                  : 'bg-white/20 text-white hover:bg-white/30'
                   }`}
               >
                 Todos
@@ -322,8 +339,8 @@ const BarManagementSystem = () => {
               <button
                 onClick={() => setFilter('ingreso')}
                 className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'ingreso'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-white/20 text-white hover:bg-white/30'
                   }`}
               >
                 Ingresos
@@ -331,8 +348,8 @@ const BarManagementSystem = () => {
               <button
                 onClick={() => setFilter('egreso')}
                 className={`px-4 py-2 rounded-lg font-medium transition ${filter === 'egreso'
-                    ? 'bg-red-500 text-white'
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-white/20 text-white hover:bg-white/30'
                   }`}
               >
                 Egresos
@@ -377,6 +394,38 @@ const BarManagementSystem = () => {
                 Análisis Egresos
               </button>
             </div>
+            <div className="flex items-center gap-2 text-white">
+              <label htmlFor="start" className="text-sm">Desde:</label>
+              <input
+                type="date"
+                id="start"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-white/20 text-white rounded-lg px-2 py-1 border border-white/30 focus:ring-2 focus:ring-purple-400"
+              />
+
+              <label htmlFor="end" className="text-sm">Hasta:</label>
+              <input
+                type="date"
+                id="end"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-white/20 text-white rounded-lg px-2 py-1 border border-white/30 focus:ring-2 focus:ring-purple-400"
+              />
+
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="ml-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+
           </div>
         </div>
 
@@ -513,8 +562,8 @@ const BarManagementSystem = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${index === 0 ? 'bg-red-500' :
-                          index === 1 ? 'bg-orange-500' :
-                            index === 2 ? 'bg-yellow-500' : 'bg-blue-500'
+                        index === 1 ? 'bg-orange-500' :
+                          index === 2 ? 'bg-yellow-500' : 'bg-blue-500'
                         }`}>
                         {index + 1}
                       </div>
@@ -529,8 +578,8 @@ const BarManagementSystem = () => {
                   <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${index === 0 ? 'bg-red-500' :
-                          index === 1 ? 'bg-orange-500' :
-                            index === 2 ? 'bg-yellow-500' : 'bg-blue-500'
+                        index === 1 ? 'bg-orange-500' :
+                          index === 2 ? 'bg-yellow-500' : 'bg-blue-500'
                         }`}
                       style={{ width: `${item.percentage}%` }}
                     ></div>
@@ -567,8 +616,8 @@ const BarManagementSystem = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${transaction.type === 'ingreso'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-red-500 text-white'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-red-500 text-white'
                           }`}>
                           {transaction.type === 'ingreso' ? '+ Ingreso' : '- Egreso'}
                         </span>
