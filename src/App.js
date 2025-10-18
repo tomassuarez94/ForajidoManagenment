@@ -105,6 +105,28 @@ const BarManagementSystem = () => {
     ],
   };
 
+
+  // Convierte "YYYY-MM-DD" a una fecha local (sin saltos de zona)
+  const parseLocalDate = (str) => {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d); // fecha local exacta
+  };
+
+  // Convierte Date -> "YYYY-MM-DD" (local)
+  const toYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Mostrar fecha bonita en UI sin romper zona horaria
+  const formatDisplayDate = (ymd) => {
+    const d = parseLocalDate(ymd);
+    return d.toLocaleDateString("es-CO"); // 18/10/2025, etc.
+  };
+
+
   // 🔹 Guardar o actualizar en Firestore
   const handleSubmit = async () => {
     if (!formData.category || !formData.description || !formData.amount) {
@@ -182,41 +204,43 @@ const BarManagementSystem = () => {
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
-    // Filtrar por tipo (ingreso/egreso)
     if (filter !== "all") {
       filtered = filtered.filter((t) => t.type === filter);
     }
 
-    // Si el usuario selecciona rango de fechas personalizado
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      // Aseguramos incluir el día final completo
-      end.setHours(23, 59, 59, 999);
+      const start = parseLocalDate(startDate);
+      const end = parseLocalDate(endDate);
+      end.setHours(23, 59, 59, 999); // incluye el día final completo
 
       filtered = filtered.filter((t) => {
-        const transactionDate = new Date(t.date);
-        return transactionDate >= start && transactionDate <= end;
+        const tx = parseLocalDate(t.date);
+        return tx >= start && tx <= end;
       });
-    } else if (dateFilter !== "all") {
-      // Filtros rápidos (hoy / semana / mes)
+    }
+    else if (dateFilter !== "all") {
       const today = new Date();
-      const filterDate = new Date();
 
       if (dateFilter === "today") {
-        filterDate.setHours(0, 0, 0, 0);
-        filtered = filtered.filter((t) => new Date(t.date) >= filterDate);
+        const todayYMD = toYMD(today);
+        filtered = filtered.filter((t) => t.date === todayYMD);
       } else if (dateFilter === "week") {
-        filterDate.setDate(today.getDate() - 7);
-        filtered = filtered.filter((t) => new Date(t.date) >= filterDate);
+        const weekAgo = new Date();
+        weekAgo.setDate(today.getDate() - 7);
+        const threshold = parseLocalDate(toYMD(weekAgo));
+        filtered = filtered.filter((t) => parseLocalDate(t.date) >= threshold);
       } else if (dateFilter === "month") {
-        filterDate.setMonth(today.getMonth() - 1);
-        filtered = filtered.filter((t) => new Date(t.date) >= filterDate);
+        const monthAgo = new Date();
+        monthAgo.setMonth(today.getMonth() - 1);
+        const threshold = parseLocalDate(toYMD(monthAgo));
+        filtered = filtered.filter((t) => parseLocalDate(t.date) >= threshold);
       }
     }
 
-    return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return filtered.sort((a, b) => parseLocalDate(b.date) - parseLocalDate(a.date));
   }, [transactions, filter, dateFilter, startDate, endDate]);
+
 
 
   const stats = useMemo(() => {
@@ -622,8 +646,9 @@ const BarManagementSystem = () => {
                           {transaction.type === 'ingreso' ? '+ Ingreso' : '- Egreso'}
                         </span>
                         <span className="text-purple-200 text-sm">
-                          {new Date(transaction.date).toLocaleDateString('es-CO')}
+                          {formatDisplayDate(transaction.date)}
                         </span>
+
                       </div>
                       <h3 className="text-white font-medium mb-1">{transaction.category}</h3>
                       <p className="text-purple-200 text-sm">{transaction.description}</p>
